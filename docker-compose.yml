@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_TRUSTED_ORIGIN: ${BETTER_AUTH_TRUSTED_ORIGIN:-http://localhost:3000}
+      PORT: 3000
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  uploads:
