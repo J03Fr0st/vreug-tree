@@ -1,0 +1,39 @@
+// server/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id         String    @id @default(cuid())
+  firstName  String
+  lastName   String
+  birthDate  DateTime?
+  deathDate  DateTime?
+  photoUrl   String?
+  bio        String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  relationshipsFrom Relationship[] @relation("RelationshipFrom")
+  relationshipsTo   Relationship[] @relation("RelationshipTo")
+}
+
+model Relationship {
+  id              String           @id @default(cuid())
+  memberId        String
+  relatedMemberId String
+  type            RelationshipType
+
+  member        Member @relation("RelationshipFrom", fields: [memberId], references: [id], onDelete: Cascade)
+  relatedMember Member @relation("RelationshipTo", fields: [relatedMemberId], references: [id], onDelete: Cascade)
+}
+
+enum RelationshipType {
+  PARENT_CHILD
+  SPOUSE
+}
