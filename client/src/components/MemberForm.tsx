@@ -42,19 +42,109 @@ export function MemberForm({ member, onDone, onCancel }: Props) {
   });
 
   return (
-    <div style={{ width: 300, borderLeft: "1px solid #eee", padding: 24 }}>
-      <h2>{member ? "Edit Member" : "Add Member"}</h2>
-      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}>
-        <div><label>First Name *<br /><input value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></label></div>
-        <div><label>Last Name *<br /><input value={lastName} onChange={(e) => setLastName(e.target.value)} required /></label></div>
-        <div><label>Birth Date<br /><input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} /></label></div>
-        <div><label>Death Date<br /><input type="date" value={deathDate} onChange={(e) => setDeathDate(e.target.value)} /></label></div>
-        <div><label>Bio<br /><textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} /></label></div>
-        <div><label>Photo<br /><input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} /></label></div>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <div style={{ marginTop: 12 }}>
-          <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Saving..." : "Save"}</button>
-          <button type="button" onClick={onCancel} style={{ marginLeft: 8 }}>Cancel</button>
+    <div style={{
+      width: 300,
+      borderLeft: "1.5px solid var(--color-border)",
+      background: "var(--color-surface)",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: "18px 20px 16px",
+        borderBottom: "1.5px solid var(--color-border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "var(--color-text)" }}>
+          {member ? "Edit Member" : "Add Member"}
+        </h2>
+        <button
+          onClick={onCancel}
+          style={{
+            width: 28, height: 28, borderRadius: "50%",
+            background: "var(--color-surface-2)", color: "var(--color-text-muted)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16,
+          }}
+        >×</button>
+      </div>
+
+      {/* Form */}
+      <form
+        onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+        style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label>First Name *</label>
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required placeholder="Jane" />
+          </div>
+          <div>
+            <label>Last Name *</label>
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} required placeholder="Smith" />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label>Birth Date</label>
+            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+          </div>
+          <div>
+            <label>Death Date</label>
+            <input type="date" value={deathDate} onChange={(e) => setDeathDate(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <label>Bio</label>
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="A short biography…" style={{ resize: "vertical" }} />
+        </div>
+        <div>
+          <label>Photo</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+            style={{ padding: "6px 10px" }}
+          />
+        </div>
+
+        {error && (
+          <div style={{
+            padding: "10px 14px",
+            background: "#FEF2F2",
+            border: "1px solid #FECACA",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--color-danger)",
+            fontSize: 13, fontWeight: 500,
+          }}>{error}</div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            style={{
+              flex: 1, padding: "9px 0",
+              background: "var(--color-accent)", color: "#fff",
+              borderRadius: "var(--radius-sm)",
+            }}
+          >
+            {mutation.isPending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: "9px 0",
+              background: "var(--color-surface-2)", color: "var(--color-text)",
+              border: "1.5px solid var(--color-border)",
+              borderRadius: "var(--radius-sm)",
+            }}
+          >
+            Cancel
+          </button>
         </div>
       </form>
     </div>
