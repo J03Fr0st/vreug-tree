@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import ReactFlow, { Background, Controls, MiniMap, useNodesState, useEdgesState, type Node } from "reactflow";
+import ReactFlow, {
+  Background, Controls, MiniMap,
+  useNodesState, useEdgesState,
+  type Node, type Edge,
+} from "reactflow";
 import "reactflow/dist/style.css";
+import dagre from "@dagrejs/dagre";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
 import { MemberNode } from "../components/MemberNode.js";
@@ -11,9 +16,7 @@ import { useSession } from "../lib/auth.js";
 const nodeTypes = { member: MemberNode };
 
 const NODE_W = 180;
-const NODE_H = 140;
-const H_GAP = 40;   // horizontal gap between nodes in same generation
-const V_GAP = 80;   // vertical gap between generations
+const NODE_H = 120;
 
 type Member = {
   id: string; firstName: string; lastName: string;
@@ -22,82 +25,58 @@ type Member = {
 };
 type Relationship = { id: string; memberId: string; relatedMemberId: string; type: string };
 
-/**
- * Assigns each member a generation (row) based on parent-child relationships,
- * then lays them out left-to-right within each generation, centred overall.
- */
-function computeLayout(
+function getLayoutedNodes(
   members: Member[],
-  relationships: Relationship[]
-): Map<string, { x: number; y: number }> {
-  if (members.length === 0) return new Map();
+  relationships: Relationship[],
+  onClickMember: (id: string) => void,
+): { nodes: Node[]; edges: Edge[] } {
+  // Build dagre graph — only parent-child edges drive the hierarchy
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB", ranksep: 100, nodesep: 60, marginx: 40, marginy: 40 });
 
-  // Build child → parents and parent → children maps
-  const childToParents = new Map<string, string[]>();
-  const parentToChildren = new Map<string, string[]>();
+  for (const m of members) {
+    g.setNode(m.id, { width: NODE_W, height: NODE_H });
+  }
 
   for (const r of relationships) {
-    if (r.type !== "PARENT_CHILD") continue;
-    const parentId = r.memberId;
-    const childId = r.relatedMemberId;
-    if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, []);
-    parentToChildren.get(parentId)!.push(childId);
-    if (!childToParents.has(childId)) childToParents.set(childId, []);
-    childToParents.get(childId)!.push(parentId);
-  }
-
-  // BFS from roots (members with no parents)
-  const gen = new Map<string, number>();
-  const roots = members.filter(m => !childToParents.has(m.id) || childToParents.get(m.id)!.length === 0);
-  const startIds = roots.length > 0 ? roots.map(m => m.id) : [members[0].id];
-
-  const queue: string[] = [];
-  for (const id of startIds) {
-    gen.set(id, 0);
-    queue.push(id);
-  }
-
-  let qi = 0;
-  while (qi < queue.length) {
-    const id = queue[qi++];
-    for (const childId of parentToChildren.get(id) ?? []) {
-      if (!gen.has(childId)) {
-        gen.set(childId, gen.get(id)! + 1);
-        queue.push(childId);
-      }
+    if (r.type === "PARENT_CHILD") {
+      g.setEdge(r.memberId, r.relatedMemberId);
     }
   }
 
-  // Any member not reachable from roots gets generation 0
-  for (const m of members) {
-    if (!gen.has(m.id)) gen.set(m.id, 0);
-  }
+  dagre.layout(g);
 
-  // Group members by generation
-  const byGen = new Map<number, string[]>();
-  for (const m of members) {
-    const g = gen.get(m.id)!;
-    if (!byGen.has(g)) byGen.set(g, []);
-    byGen.get(g)!.push(m.id);
-  }
+  const nodes: Node[] = members.map((m) => {
+    const pos = g.node(m.id);
+    return {
+      id: m.id,
+      type: "member",
+      position: {
+        x: pos ? pos.x - NODE_W / 2 : 0,
+        y: pos ? pos.y - NODE_H / 2 : 0,
+      },
+      data: { ...m, onClick: () => onClickMember(m.id) },
+    };
+  });
 
-  // Assign positions: centre each generation horizontally
-  const positions = new Map<string, { x: number; y: number }>();
-  const sortedGens = [...byGen.keys()].sort((a, b) => a - b);
+  const edges: Edge[] = relationships.map((r) => {
+    const isSpouse = r.type === "SPOUSE";
+    return {
+      id: r.id,
+      source: r.memberId,
+      target: r.relatedMemberId,
+      type: isSpouse ? "straight" : "smoothstep",
+      label: isSpouse ? "♥" : undefined,
+      style: isSpouse
+        ? { stroke: "#F43F5E", strokeWidth: 2, strokeDasharray: "5 4" }
+        : { stroke: "#2563EB", strokeWidth: 2 },
+      labelStyle: isSpouse ? { fill: "#F43F5E", fontWeight: 700 } : undefined,
+      labelBgStyle: isSpouse ? { fill: "#fff", fillOpacity: 0.85 } : undefined,
+    };
+  });
 
-  for (const g of sortedGens) {
-    const ids = byGen.get(g)!;
-    const totalW = ids.length * NODE_W + (ids.length - 1) * H_GAP;
-    const startX = -totalW / 2;
-    ids.forEach((id, i) => {
-      positions.set(id, {
-        x: startX + i * (NODE_W + H_GAP),
-        y: g * (NODE_H + V_GAP),
-      });
-    });
-  }
-
-  return positions;
+  return { nodes, edges };
 }
 
 export function TreePage() {
@@ -112,41 +91,16 @@ export function TreePage() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // Recompute layout whenever data changes
-  const computedNodes = useMemo<Node[]>(() => {
-    if (!data) return [];
-    const positions = computeLayout(data.members, data.relationships);
-    return data.members.map((m) => ({
-      id: m.id,
-      type: "member",
-      position: positions.get(m.id) ?? { x: 0, y: 0 },
-      data: { ...m, onClick: () => setSelectedMemberId(m.id) },
-    }));
+  const layout = useMemo(() => {
+    if (!data) return null;
+    return getLayoutedNodes(data.members, data.relationships, setSelectedMemberId);
   }, [data]);
 
-  const computedEdges = useMemo(() => {
-    if (!data) return [];
-    return data.relationships.map((r) => ({
-      id: r.id,
-      source: r.memberId,
-      target: r.relatedMemberId,
-      type: r.type === "SPOUSE" ? "straight" : "smoothstep",
-      label: r.type === "SPOUSE" ? "♥" : undefined,
-      style: r.type === "SPOUSE"
-        ? { stroke: "#F43F5E", strokeWidth: 2, strokeDasharray: "5 3" }
-        : { stroke: "#2563EB", strokeWidth: 2 },
-      labelStyle: { fill: "#F43F5E", fontWeight: 700, fontSize: 12 },
-    }));
-  }, [data]);
-
-  // Sync into ReactFlow state when data changes (preserves drag positions until next refetch)
   useEffect(() => {
-    setNodes(computedNodes);
-  }, [computedNodes, setNodes]);
-
-  useEffect(() => {
-    setEdges(computedEdges);
-  }, [computedEdges, setEdges]);
+    if (!layout) return;
+    setNodes(layout.nodes);
+    setEdges(layout.edges);
+  }, [layout, setNodes, setEdges]);
 
   const selectedMember = data?.members.find((m) => m.id === selectedMemberId) ?? null;
 
@@ -160,8 +114,8 @@ export function TreePage() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
+          fitViewOptions={{ padding: 0.25 }}
+          minZoom={0.15}
           maxZoom={2}
         >
           <Background color="#E4E4E7" gap={24} />
@@ -173,15 +127,15 @@ export function TreePage() {
           />
         </ReactFlow>
 
-        {/* Empty state */}
         {data && data.members.length === 0 && (
           <div style={{
-            position: "absolute", inset: 0, display: "flex",
-            flexDirection: "column", alignItems: "center", justifyContent: "center",
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
             pointerEvents: "none",
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🌳</div>
-            <p style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-text-muted)" }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🌳</div>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text-muted)" }}>
               Your family tree is empty
             </p>
             {session && (
