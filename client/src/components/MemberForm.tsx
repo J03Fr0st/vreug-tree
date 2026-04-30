@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
 
-type Member = { id: string; firstName: string; lastName: string; birthDate: string | null; deathDate: string | null; photoUrl: string | null; bio: string | null };
+type Member = { id: string; firstName: string; lastName: string; maidenName: string | null; birthDate: string | null; deathDate: string | null; place: string | null; photoUrl: string | null; bio: string | null };
 
 type Props = {
   member?: Member;
@@ -13,8 +13,10 @@ type Props = {
 export function MemberForm({ member, onDone, onCancel }: Props) {
   const [firstName, setFirstName] = useState(member?.firstName ?? "");
   const [lastName, setLastName] = useState(member?.lastName ?? "");
+  const [maidenName, setMaidenName] = useState(member?.maidenName ?? "");
   const [birthDate, setBirthDate] = useState(member?.birthDate?.slice(0, 10) ?? "");
   const [deathDate, setDeathDate] = useState(member?.deathDate?.slice(0, 10) ?? "");
+  const [place, setPlace] = useState(member?.place ?? "");
   const [bio, setBio] = useState(member?.bio ?? "");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [error, setError] = useState("");
@@ -30,7 +32,16 @@ export function MemberForm({ member, onDone, onCancel }: Props) {
         const data = await upload.json();
         photoUrl = data.url;
       }
-      const body = { firstName, lastName, birthDate: birthDate || null, deathDate: deathDate || null, bio: bio || null, photoUrl };
+      const body = {
+        firstName,
+        lastName,
+        maidenName: maidenName || null,
+        birthDate: birthDate || null,
+        deathDate: deathDate || null,
+        place: place || null,
+        bio: bio || null,
+        photoUrl,
+      };
       if (member) {
         return apiFetch(`/members/${member.id}`, { method: "PUT", body: JSON.stringify(body) });
       } else {
@@ -86,6 +97,10 @@ export function MemberForm({ member, onDone, onCancel }: Props) {
             <input value={lastName} onChange={(e) => setLastName(e.target.value)} required placeholder="Smith" />
           </div>
         </div>
+        <div>
+          <label>Maiden Name</label>
+          <input value={maidenName} onChange={(e) => setMaidenName(e.target.value)} placeholder="Optional" />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
             <label>Birth Date</label>
@@ -95,6 +110,10 @@ export function MemberForm({ member, onDone, onCancel }: Props) {
             <label>Death Date</label>
             <input type="date" value={deathDate} onChange={(e) => setDeathDate(e.target.value)} />
           </div>
+        </div>
+        <div>
+          <label>Place</label>
+          <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="City, Country" />
         </div>
         <div>
           <label>Bio</label>

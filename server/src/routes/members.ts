@@ -14,7 +14,7 @@ membersRouter.get("/", async (c) => {
 // POST /api/members — add member (auth required)
 membersRouter.post("/", requireAuth, async (c) => {
   const body = await c.req.json();
-  const { firstName, lastName, birthDate, deathDate, photoUrl, bio } = body;
+  const { firstName, lastName, maidenName, birthDate, deathDate, place, photoUrl, bio } = body;
   if (!firstName || !lastName) {
     return c.json({ error: "firstName and lastName are required" }, 400);
   }
@@ -22,8 +22,10 @@ membersRouter.post("/", requireAuth, async (c) => {
     data: {
       firstName,
       lastName,
+      maidenName: maidenName ?? null,
       birthDate: birthDate ? new Date(birthDate) : null,
       deathDate: deathDate ? new Date(deathDate) : null,
+      place: place ?? null,
       photoUrl: photoUrl ?? null,
       bio: bio ?? null,
     },
@@ -35,7 +37,7 @@ membersRouter.post("/", requireAuth, async (c) => {
 membersRouter.put("/:id", requireAuth, async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
-  const { firstName, lastName, birthDate, deathDate, photoUrl, bio } = body;
+  const { firstName, lastName, maidenName, birthDate, deathDate, place, photoUrl, bio } = body;
   const existing = await db.member.findUnique({ where: { id } });
   if (!existing) return c.json({ error: "Not found" }, 404);
   const member = await db.member.update({
@@ -43,8 +45,10 @@ membersRouter.put("/:id", requireAuth, async (c) => {
     data: {
       firstName: firstName ?? existing.firstName,
       lastName: lastName ?? existing.lastName,
+      maidenName: maidenName !== undefined ? maidenName : existing.maidenName,
       birthDate: birthDate !== undefined ? (birthDate ? new Date(birthDate) : null) : existing.birthDate,
       deathDate: deathDate !== undefined ? (deathDate ? new Date(deathDate) : null) : existing.deathDate,
+      place: place !== undefined ? place : existing.place,
       photoUrl: photoUrl !== undefined ? photoUrl : existing.photoUrl,
       bio: bio !== undefined ? bio : existing.bio,
     },

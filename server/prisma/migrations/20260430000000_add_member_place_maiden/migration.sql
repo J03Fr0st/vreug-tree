@@ -1,0 +1,2 @@
+ALTER TABLE "Member" ADD COLUMN "maidenName" TEXT;
+ALTER TABLE "Member" ADD COLUMN "place" TEXT;

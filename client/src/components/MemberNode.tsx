@@ -1,91 +1,57 @@
-import { Handle, Position } from "reactflow";
-
-export type MemberNodeData = {
+type Member = {
+  id: string;
   firstName: string;
   lastName: string;
-  photoUrl?: string | null;
-  birthDate?: string | null;
-  deathDate?: string | null;
+  birthDate: string | null;
+  deathDate: string | null;
+  place: string | null;
+  photoUrl: string | null;
+};
+
+const IconPin = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 7-8 13-8 13s-8-6-8-13a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
+function initials(m: Member) {
+  return ((m.firstName?.[0] ?? "") + (m.lastName?.[0] ?? "")).toUpperCase();
+}
+function yr(d: string | null) { return d ? d.slice(0, 4) : ""; }
+function lifespan(m: Member) {
+  const b = yr(m.birthDate), d = yr(m.deathDate);
+  if (b && d) return `${b}–${d}`;
+  if (b) return `b. ${b}`;
+  return "";
+}
+
+type Props = {
+  member: Member;
+  x: number;
+  y: number;
+  selected: boolean;
+  dimmed: boolean;
   onClick: () => void;
 };
 
-export function MemberNode({ data }: { data: MemberNodeData }) {
-  const initials = `${data.firstName[0] ?? ""}${data.lastName[0] ?? ""}`.toUpperCase();
-  const deceased = !!data.deathDate;
-
+export function MemberNode({ member, x, y, selected, dimmed, onClick }: Props) {
+  const deceased = !!member.deathDate;
   return (
     <div
-      onClick={data.onClick}
-      style={{
-        padding: "12px 16px",
-        border: `2px solid ${deceased ? "#D4D4D8" : "var(--color-accent)"}`,
-        borderRadius: "var(--radius-md)",
-        background: "var(--color-surface)",
-        boxShadow: "var(--shadow-md)",
-        cursor: "pointer",
-        minWidth: 160,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 6,
-        transition: "box-shadow 180ms ease, border-color 180ms ease",
-        opacity: deceased ? 0.75 : 1,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-lg)";
-        (e.currentTarget as HTMLDivElement).style.borderColor = deceased ? "#A1A1AA" : "#1D4ED8";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-md)";
-        (e.currentTarget as HTMLDivElement).style.borderColor = deceased ? "#D4D4D8" : "var(--color-accent)";
-      }}
+      className={`node${selected ? " selected" : ""}${dimmed ? " dimmed" : ""}${deceased ? " deceased" : ""}`}
+      style={{ left: x, top: y }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: "var(--color-accent)", border: "none", width: 8, height: 8 }} />
-
-      {data.photoUrl ? (
-        <img
-          src={data.photoUrl}
-          alt=""
-          style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--color-border)" }}
-        />
-      ) : (
-        <div style={{
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          background: "var(--color-surface-2)",
-          border: "2px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "var(--font-display)",
-          fontSize: 20,
-          fontWeight: 700,
-          color: "var(--color-text-muted)",
-        }}>
-          {initials}
-        </div>
-      )}
-
-      <div style={{
-        fontWeight: 700,
-        fontSize: 14,
-        color: "var(--color-text)",
-        textAlign: "center",
-        fontFamily: "var(--font-body)",
-        lineHeight: 1.3,
-      }}>
-        {data.firstName}<br />{data.lastName}
+      <div className="node-photo">
+        {member.photoUrl ? <img src={member.photoUrl} alt="" /> : initials(member)}
+        <div className="node-status" />
       </div>
-
-      {data.birthDate && (
-        <div style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 500 }}>
-          {data.birthDate.slice(0, 4)}
-          {data.deathDate ? ` – ${data.deathDate.slice(0, 4)}` : ""}
-        </div>
+      <div className="node-name">{member.firstName} {member.lastName}</div>
+      <div className="node-meta">{lifespan(member)}</div>
+      {member.place && (
+        <div className="node-place"><IconPin />{member.place}</div>
       )}
-
-      <Handle type="source" position={Position.Bottom} style={{ background: "var(--color-accent)", border: "none", width: 8, height: 8 }} />
     </div>
   );
 }

@@ -12,8 +12,10 @@ model Member {
   id         String    @id @default(cuid())
   firstName  String
   lastName   String
+  maidenName String?
   birthDate  DateTime?
   deathDate  DateTime?
+  place      String?
   photoUrl   String?
   bio        String?
   createdAt  DateTime  @default(now())
