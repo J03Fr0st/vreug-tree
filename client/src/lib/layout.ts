@@ -213,12 +213,12 @@ export function layout(members: LayoutMember[], rels: LayoutRel[]): LayoutResult
         const cp = nodePositions[c.members[0]];
         return {
           id: c.members[0],
-          x: cp.x + unitParentWidth(c) / 2,
-          y: c.members.length === 2 ? cp.y + NODE_H / 2 : cp.y,
+          x: cp.x + NODE_W / 2,
+          y: cp.y,
         };
       });
-      if (childCenters.length > 1) {
-        const xs = childCenters.map(c => c.x);
+      if (childCenters.length > 1 || childCenters[0]?.x !== parentCenterX) {
+        const xs = [...childCenters.map(c => c.x), parentCenterX];
         edges.push({
           type: "child-bus",
           x1: Math.min(...xs), y1: trunkY,
